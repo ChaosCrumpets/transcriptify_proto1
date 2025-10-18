@@ -1,3 +1,5 @@
+require('dotenv').config({ path: '.env.local' });
+
 /*
   Simple local worker (CommonJS) that polls Supabase REST for PENDING jobs
   and writes mock results. Runs with Node.js (18+ which provides global fetch).
