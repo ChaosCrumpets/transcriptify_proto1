@@ -1,4 +1,4 @@
-import { db } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 /**
  * Fetches a single transcription report from the database by its ID.
@@ -8,11 +8,12 @@ import { db } from '@/lib/supabase';
  * @returns The report data or null if not found.
  */
 export const getTranscriptionReport = async (id: string) => {
+  const supabase = createSupabaseServerClient();
   if (!id) {
     return null;
   }
 
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('transcription_reports')
     .select('*')
     .eq('id', id)

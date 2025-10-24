@@ -2,9 +2,22 @@
  * Local worker: polls `transcription_reports` for PENDING rows and runs a
  * minimal `processJob` replacement. This is intended for local development only.
  *
- * Run with: `npx ts-node scripts/worker.ts` (install ts-node if needed)
+ * Run with: `npx ts-node --require dotenv/config scripts/worker.ts` (install ts-node and dotenv if needed)
  */
-import { db } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+// Load environment variables from .env.local
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    'Missing environment variables. Make sure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are in your .env.local file.'
+  );
+}
+
+// Create a Supabase client for the script
+const db = createClient(supabaseUrl, supabaseAnonKey);
 
 async function processJobLocal(reportId: string) {
   console.log(`[worker] Processing job ${reportId}`);

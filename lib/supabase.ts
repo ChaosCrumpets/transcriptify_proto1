@@ -1,22 +1,18 @@
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr'
 
-// Read required environment variables. Do NOT provide runtime defaults here —
-// fail fast so developers set up `.env.local` explicitly.
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Missing environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are required. Add them to .env.local (see .env.local.example).'
-  );
+// Define a function to create a Supabase client for Client Components
+export const createSupabaseBrowserClient = () => {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 }
-
-export const db = createClient(supabaseUrl, supabaseAnonKey);
 
 // Define a TypeScript type for our report for type safety
 export type TranscriptionReport = {
   id: string;
   created_at: string;
+  title: string | null;
   source_url: string;
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   synopsis: string | null;

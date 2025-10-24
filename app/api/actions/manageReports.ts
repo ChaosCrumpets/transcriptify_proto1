@@ -1,6 +1,6 @@
 'use server';
 
-import { db } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -9,11 +9,12 @@ import { revalidatePath } from 'next/cache';
  * @param newTitle The new title for the report.
  */
 export async function renameReport({ id, newTitle }: { id: string; newTitle: string }) {
+  const supabase = createSupabaseServerClient();
   if (!id || !newTitle) {
     throw new Error('Report ID and new title are required.');
   }
 
-  const { error } = await db
+  const { error } = await supabase
     .from('transcription_reports')
     .update({ title: newTitle })
     .eq('id', id);
@@ -31,11 +32,12 @@ export async function renameReport({ id, newTitle }: { id: string; newTitle: str
  * @param id The ID of the report to delete.
  */
 export async function deleteReport({ id }: { id: string }) {
+  const supabase = createSupabaseServerClient();
   if (!id) {
     throw new Error('Report ID is required.');
   }
 
-  const { error } = await db
+  const { error } = await supabase
     .from('transcription_reports')
     .delete()
     .eq('id', id);
@@ -53,12 +55,13 @@ export async function deleteReport({ id }: { id: string }) {
  * @param id The ID of the report to duplicate.
  */
 export async function duplicateReport({ id }: { id: string }) {
+  const supabase = createSupabaseServerClient();
   if (!id) {
     throw new Error('Report ID is required.');
   }
 
   // 1. Fetch the original report
-  const { data: original, error: fetchError } = await db
+  const { data: original, error: fetchError } = await supabase
     .from('transcription_reports')
     .select('*')
     .eq('id', id)
@@ -75,7 +78,7 @@ export async function duplicateReport({ id }: { id: string }) {
   newReportData.status = 'COMPLETED'; // Duplicates are already complete
 
   // 3. Insert the new record
-  const { error: insertError } = await db
+  const { error: insertError } = await supabase
     .from('transcription_reports')
     .insert(newReportData);
 
