@@ -1,14 +1,14 @@
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Fetches a single transcription report from the database by its ID.
  * This is used by the report page to poll for updates and display results.
  *
+ * @param supabase The Supabase client instance.
  * @param id The UUID of the report to retrieve.
  * @returns The report data or null if not found.
  */
-export const getTranscriptionReport = async (id: string) => {
-  const supabase = createSupabaseServerClient();
+export const getTranscriptionReport = async (supabase: SupabaseClient, id: string) => {
   if (!id) {
     return null;
   }

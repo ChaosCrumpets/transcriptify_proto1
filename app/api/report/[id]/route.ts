@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getTranscriptionReport } from '../../queries/getTranscriptionReport';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 export async function GET(
   request: Request,
@@ -11,7 +12,8 @@ export async function GET(
       return NextResponse.json({ error: 'Report ID is required' }, { status: 400 });
     }
 
-    const report = await getTranscriptionReport(reportId);
+    const supabase = createSupabaseServerClient();
+    const report = await getTranscriptionReport(supabase, reportId);
 
     if (!report) {
       return NextResponse.json({ error: 'Report not found' }, { status: 404 });

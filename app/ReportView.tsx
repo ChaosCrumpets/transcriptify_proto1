@@ -1,21 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { TranscriptionReport } from '@/lib/supabase';
-
+import { TranscriptionReport } from '@/lib/utils';
 import { getTranscriptionReport } from '@/app/api/queries/getTranscriptionReport';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 export function ReportView({ reportId }: { reportId: string }) {
   console.log("Rendering ReportView");
   const [report, setReport] = useState<TranscriptionReport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     let isActive = true;
     const poll = async () => {
       if (!reportId) return;
       try {
-        const data = await getTranscriptionReport(reportId);
+        const data = await getTranscriptionReport(supabase, reportId);
         if (isActive) {
           setReport(data);
           if (data && (data.status === 'PENDING' || data.status === 'PROCESSING')) {
@@ -34,7 +35,7 @@ export function ReportView({ reportId }: { reportId: string }) {
     return () => {
       isActive = false;
     };
-  }, [reportId]);
+  }, [reportId, supabase]);
 
   if (error) {
     return <div className="p-8 text-red-500">Error: {error}</div>;

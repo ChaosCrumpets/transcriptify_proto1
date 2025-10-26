@@ -1,7 +1,6 @@
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { SupabaseClient } from '@supabase/supabase-js';
 
-export async function getHistory() {
-  const supabase = createSupabaseServerClient();
+export async function getHistory(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from('transcription_reports')
     .select('*')

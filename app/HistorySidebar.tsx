@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { TranscriptionReport } from '@/lib/supabase';
+import { TranscriptionReport } from '@/lib/utils';
 import { HistoryItem } from './HistoryItem';
 import { getHistory } from '@/app/api/queries/getHistory';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 export function HistorySidebar() {
   console.log("Rendering HistorySidebar");
@@ -13,10 +14,11 @@ export function HistorySidebar() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const activeReportId = searchParams.get('id');
+  const supabase = createSupabaseBrowserClient();
 
   const loadHistory = async () => {
     try {
-      const data = await getHistory();
+      const data = await getHistory(supabase);
       setReports(data);
     } catch (err: any) {
       setError(err.message);
@@ -29,35 +31,4 @@ export function HistorySidebar() {
     // Poll for updates every 5 seconds
     const interval = setInterval(loadHistory, 5000);
     return () => clearInterval(interval);
-  }, []);
-
-  const handleSelectReport = (id: string) => {
-    router.push(`/?id=${id}`);
-  };
-
-  return (
-    <aside className="w-full sm:w-1/3 md:w-1/4 lg:w-1/5 bg-gray-50 dark:bg-gray-900 p-4 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
-      <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-        History
-      </h2>
-      {error && <p className="text-red-500">{error}</p>}
-      <div className="space-y-2">
-        {reports.length > 0 ? (
-          reports.map((report) => (
-            <HistoryItem
-              key={report.id}
-              report={report}
-              isActive={report.id === activeReportId}
-              onSelect={() => handleSelectReport(report.id)}
-              onUpdate={loadHistory}
-            />
-          ))
-        ) : (
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
-            No reports yet. Generate one to get started.
-          </p>
-        )}
-      </div>
-    </aside>
-  );
-}
+  }, [supabase]);
