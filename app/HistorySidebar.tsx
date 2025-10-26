@@ -1,17 +1,21 @@
-''''use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { TranscriptionReport } from '@/lib/utils';
 import { HistoryItem } from './HistoryItem';
 
+interface HistoryItemData {
+  id: string;
+  title: string;
+  created_at: string;
+}
+
 export function HistorySidebar() {
-  console.log("Rendering HistorySidebar");
-  const [reports, setReports] = useState<TranscriptionReport[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryItemData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const activeReportId = searchParams.get('id');
+  const currentReportId = searchParams.get('reportId');
 
   const loadHistory = async () => {
     try {
@@ -20,9 +24,11 @@ export function HistorySidebar() {
         throw new Error('Failed to fetch history');
       }
       const data = await response.json();
-      setReports(data);
-    } catch (err: any) {
-      setError(err.message);
+      setHistory(data.history);
+    } catch (error) {
+      console.error('Error loading history:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -33,21 +39,27 @@ export function HistorySidebar() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleItemClick = (reportId: string) => {
+    router.push(`/?reportId=${reportId}`);
+  };
+
   return (
-    <div className="flex flex-col h-full">
-      <h2 className="text-lg font-semibold p-4">History</h2>
-      {error && <p className="text-red-500 p-4">{error}</p>}
-      <div className="overflow-y-auto">
-        {reports.map((report) => (
+    <div className="w-64 space-y-2 p-4 border-r border-gray-700 h-full overflow-y-auto">
+      <h2 className="text-lg font-semibold mb-4">History</h2>
+      {isLoading ? (
+        <p className="text-gray-400">Loading history...</p>
+      ) : history.length > 0 ? (
+        history.map((item) => (
           <HistoryItem
-            key={report.id}
-            report={report}
-            isActive={report.id === activeReportId}
-            onClick={() => router.push(`/?id=${report.id}`)}
+            key={item.id}
+            item={item}
+            isActive={item.id === currentReportId}
+            onClick={() => handleItemClick(item.id)}
           />
-        ))}
-      </div>
+        ))
+      ) : (
+        <p className="text-gray-400">No history found.</p>
+      )}
     </div>
   );
 }
-'''
