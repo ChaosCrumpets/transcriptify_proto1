@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { TranscriptionReport } from '@/lib/supabase';
+import { TranscriptionReport } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Trash2, Copy, Edit } from 'lucide-react';
-import { renameReport, deleteReport, duplicateReport } from '@/app/api/actions/manageReports';
+
 import { useToast } from '@/hooks/use-toast';
 
 interface HistoryItemProps {
@@ -40,18 +40,35 @@ export function HistoryItem({ report, isActive, onSelect, onUpdate }: HistoryIte
   const handleRename = async () => {
     const newTitle = prompt('Enter new title:', report.title || '');
     if (newTitle && newTitle.trim() !== report.title) {
-      await handleAction(() => renameReport({ id: report.id, newTitle }), 'Report renamed.');
+      await handleAction(async () => {
+        const response = await fetch(`/api/report/${report.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ newTitle }),
+        });
+        if (!response.ok) throw new Error('Failed to rename report.');
+      }, 'Report renamed.');
     }
   };
 
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this report?')) {
-      await handleAction(() => deleteReport({ id: report.id }), 'Report deleted.');
+      await handleAction(async () => {
+        const response = await fetch(`/api/report/${report.id}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('Failed to delete report.');
+      }, 'Report deleted.');
     }
   };
 
   const handleDuplicate = async () => {
-    await handleAction(() => duplicateReport({ id: report.id }), 'Report duplicated.');
+    await handleAction(async () => {
+      const response = await fetch(`/api/report/${report.id}/duplicate`, {
+        method: 'POST',
+      });
+      if (!response.ok) throw new Error('Failed to duplicate report.');
+    }, 'Report duplicated.');
   };
 
   const statusColor = {

@@ -56,59 +56,54 @@ async function processJob(supabase: SupabaseClient, reportId: string, sourceUrl:
   }
 }
 
-/**
- * Creates a job record and kicks off the background processing task.
- */
-export const generateTranscriptionReport = async (sourceUrl: string): Promise<string> => {
-  const supabase = createSupabaseServerClient();
+'use server';
 
-  if (!sourceUrl || !sourceUrl.startsWith('http')) {
-    throw new Error('Please provide a valid URL.');
+import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { v4 as uuidv4 } from 'uuid';
+
+// Define the shape of the state object that the action will return
+interface ActionState {
+  reportId: string | null;
+  error: string | null;
+}
+
+export async function generateTranscriptionReport(
+  prevState: ActionState, // The previous state passed by useFormState
+  formData: FormData      // The data from the form
+): Promise<ActionState> {
+  const url = formData.get('url') as string;
+
+  if (!url || !url.startsWith('http')) {
+    return { reportId: null, error: "Please enter a valid URL." };
   }
 
-  // 1. Create an initial record in the DB to track the job.
-  const { data, error } = await supabase
-    .from('transcription_reports')
-    .insert({
-      source_url: sourceUrl,
-      title: 'Untitled Transcription', // Add default title
-      status: 'PENDING',
-    })
-    .select('id')
-    .single();
+  try {
+    const supabase = createSupabaseServerClient();
+    const reportId = uuidv4();
 
-  if (error || !data) {
-    console.error('Failed to create report record:', error);
-    throw new Error(error?.message || 'Failed to create report in database.');
+    const { data, error } = await supabase
+      .from('transcription_reports')
+      .insert([
+        {
+          id: reportId,
+          source_url: url,
+          status: 'PENDING',
+        },
+      ])
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('Supabase insert error:', error);
+      throw new Error(error.message);
+    }
+
+    // On success, return the new reportId
+    return { reportId: data.id, error: null };
+
+  } catch (error: any) {
+    console.error('Transcription report generation failed:', error);
+    // On failure, return the error message
+    return { reportId: null, error: error.message || "An unknown error occurred." };
   }
-
-  const reportId = data.id;
-
-  // 2. Trigger the Make.com workflow.
-  // This is a placeholder for the actual webhook call.
-  // In a real-world scenario, you would use the MAKE_COM_WEBHOOK_URL from your environment variables.
-  const webhookUrl = process.env.MAKE_COM_WEBHOOK_URL;
-  if (webhookUrl) {
-    fetch(webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        reportId,
-        sourceUrl,
-      }),
-    }).catch(err => {
-      console.error(`[Job ${reportId}] Failed to trigger Make.com webhook:`, err);
-    });
-  } else {
-    // If the webhook URL is not configured, fall back to the mock processing.
-    // We don't await this, so the function returns immediately.
-    processJob(supabase, reportId, sourceUrl).catch(err => {
-      console.error(`[Job ${reportId}] Unhandled processing failure:`, err);
-    });
-  }
-
-  // 3. Immediately return the new report's ID to the frontend.
-  return reportId;
-};
+}
