@@ -2,6 +2,7 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { type SupabaseClient } from '@supabase/supabase-js';
+import { v4 as uuidv4 } from 'uuid';
 
 // This is a placeholder for the actual multi-step AI processing.
 // In a real-world scenario, this function would contain the logic
@@ -55,11 +56,6 @@ async function processJob(supabase: SupabaseClient, reportId: string, sourceUrl:
       .eq('id', reportId);
   }
 }
-
-'use server';
-
-import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { v4 as uuidv4 } from 'uuid';
 
 // Define the shape of the state object that the action will return
 interface ActionState {
