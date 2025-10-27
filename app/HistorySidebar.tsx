@@ -24,7 +24,7 @@ export function HistorySidebar() {
         throw new Error('Failed to fetch history');
       }
       const data = await response.json();
-      setHistory(data.history);
+      setHistory(data.history || []);
     } catch (error) {
       console.error('Error loading history:', error);
     } finally {
