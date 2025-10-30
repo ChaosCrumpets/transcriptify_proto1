@@ -1,18 +1,16 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+'use server';
+
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 /**
- * Fetches a single transcription report from the database by its ID.
- * This is used by the report page to poll for updates and display results.
- *
- * @param supabase The Supabase client instance.
- * @param id The UUID of the report to retrieve.
- * @returns The report data or null if not found.
+ * Fetches a single transcription report by its ID.
+ * Used to display the details of the active report.
+ * @param id The UUID of the report to fetch.
  */
-export const getTranscriptionReport = async (supabase: SupabaseClient, id: string) => {
-  if (!id) {
-    return null;
-  }
+export const getTranscriptionReport = async (id: string) => {
+  if (!id) return null;
 
+  const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from('transcription_reports')
     .select('*')
@@ -20,9 +18,29 @@ export const getTranscriptionReport = async (supabase: SupabaseClient, id: strin
     .single();
 
   if (error) {
-    console.error(`Error fetching report ${id}:`, error);
+    // Don't log expected 'not found' errors unless debugging
+    if (error.code !== 'PGRST116') { // PGRST116 = Row Not Found
+        console.error(`Error fetching report ${id}:`, error);
+    }
     return null;
   }
-
   return data;
+};
+
+/**
+ * Fetches all transcription reports, ordered by creation date.
+ * Used to populate the history sidebar.
+ */
+export const getAllTranscriptionReports = async () => {
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase
+        .from('transcription_reports')
+        .select('id, title, status, created_at')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching all reports:', error);
+        return [];
+    }
+    return data;
 };

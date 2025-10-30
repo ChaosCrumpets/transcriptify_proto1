@@ -1,66 +1,67 @@
 'use server';
 
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { revalidatePath } from 'next/cache';
 import { v4 as uuidv4 } from 'uuid';
-// import { makeWebhookCall } from '@/lib/makeUtils'; // Assuming you have a utility for webhook calls
 
-export async function generateTranscriptionReport(sourceUrl: string): Promise<{ reportId?: string; error?: string }> {
-  const supabase = createSupabaseServerClient(); // Ensure this doesn't violate RSC rules if used elsewhere
-
-  if (!sourceUrl || typeof sourceUrl !== 'string') {
-    return { error: 'Invalid source URL provided.' };
+/**
+ * Creates a job record in the database and triggers the external Make.com workflow.
+ * This function serves as the primary entry point for starting a new transcription job.
+ */
+export const generateTranscriptionReport = async (sourceUrl: string): Promise<{id?: string, error?: string}> => {
+  if (!sourceUrl || !sourceUrl.startsWith('http')) {
+    return { error: 'Please provide a valid URL.' };
   }
 
+  const supabase = createSupabaseServerClient();
   const reportId = uuidv4();
-  const title = `Report for ${new URL(sourceUrl).hostname}`; // Basic title generation
 
-  try {
-    // Insert the report with PENDING status and null batch_id
-    const { data, error } = await supabase
-      .from('transcription_reports')
-      .insert({
-        id: reportId,
-        source_url: sourceUrl,
-        status: 'PENDING',
-        batch_id: null, // Explicitly set batch_id to null
-        title: title,
-        // user_id: userId, // Add user ID if you have authentication
-      })
-      .select('id')
-      .single();
+  // 1. Create an initial record in the DB to track the job.
+  // The 'title' will be updated later by the workflow.
+  const { data, error } = await supabase
+    .from('transcription_reports')
+    .insert({
+      id: reportId,
+      source_url: sourceUrl,
+      status: 'PENDING',
+      title: 'Generating Title...' // A placeholder title while processing
+    })
+    .select('id')
+    .single();
 
-    if (error) {
-      console.error('Supabase insert error:', error);
-      throw new Error(`Failed to create report entry: ${error.message}`);
-    }
-
-    if (!data || !data.id) {
-        throw new Error('Failed to retrieve report ID after insert.');
-    }
-
-    console.log(`Report created with ID: ${data.id}. Status: PENDING.`);
-
-    // --------------------------------------------------------------------
-    // PLACEHOLDER: Trigger backend processing (e.g., Make.com webhook)
-    // --------------------------------------------------------------------
-    // In Plan 2, you will uncomment/add the webhook call here:
-    // try {
-    //   await makeWebhookCall(process.env.MAKE_TRANSCRIPTION_WEBHOOK_URL, {
-    //     reportId: data.id,
-    //     sourceUrl: sourceUrl,
-    //   });
-    //   console.log(`Webhook triggered for report ${data.id}`);
-    // } catch (webhookError) {
-    //   console.error(`Failed to trigger webhook for report ${data.id}:`, webhookError);
-    //   // Optionally update report status to FAILED here if webhook is critical
-    //   return { reportId: data.id, error: 'Report created, but failed to trigger processing.' };
-    // }
-    // --------------------------------------------------------------------
-
-    return { reportId: data.id };
-
-  } catch (error: any) {
-    console.error('Error in generateTranscriptionReport:', error);
-    return { error: error.message || 'An unexpected error occurred while generating the report.' };
+  if (error || !data) {
+    console.error('Database insertion error:', error);
+    return { error: error?.message || 'Failed to create report in database.' };
   }
-}
+
+  // --- [NON-DESTRUCTIVE WORKFLOW PLACEHOLDER] ---
+  // The following block is where you will integrate your backend workflow (e.g., Make.com).
+  // The goal is to send the `reportId` and `sourceUrl` to your automation platform.
+  const makeComWebhookUrl = process.env.MAKE_COM_WEBHOOK_URL;
+  if (makeComWebhookUrl) {
+    try {
+      // Intentionally not awaiting - fire and forget
+      fetch(makeComWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reportId: data.id,
+          sourceUrl,
+        }),
+      });
+    } catch (e) {
+      console.error('Failed to trigger Make.com webhook:', e);
+      // Optional: Update the report status to 'FAILED' here if the trigger fails.
+    }
+  } else {
+    console.warn('MAKE_COM_WEBHOOK_URL is not set. Skipping workflow trigger.');
+  }
+  // --- [END OF WORKFLOW PLACEHOLDER] ---
+
+
+  // Invalidate the cache for the homepage to ensure the new job appears in the history.
+  revalidatePath('/');
+
+  // Return the ID of the newly created report to the frontend.
+  return { id: data.id };
+};
